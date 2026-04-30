@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KIRIGO - 24H</title>
+    <title>KIRIGO - 24H SYSTEM</title>
     <style>
         :root {
             --bg-color: #030303;
@@ -11,178 +11,275 @@
             --text-primary: #ffffff;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        /* Общие настройки для стабильности на всех устройствах */
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
 
-        body {
+        body, html {
             background-color: var(--bg-color);
             color: var(--text-primary);
             font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
-            height: 100vh;
+            height: 100%;
+            width: 100%;
         }
 
-        /* --- Экраны --- */
-        #splash, #app, #upload, #final-timer {
+        /* Универсальный контейнер для экранов */
+        .screen {
             position: fixed;
             inset: 0;
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            width: 100vw;
+            height: 100vh;
             background: var(--bg-color);
+            z-index: 10;
         }
 
-        #splash { display: flex; z-index: 100; transition: opacity 1s; }
+        /* --- Сплэш-экран (Центрирование исправлено) --- */
+        #splash { display: flex; z-index: 100; transition: opacity 0.8s; }
 
-        /* --- Стили для таймера 24 часа --- */
-        .countdown-title {
-            font-size: 12px;
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .hands-svg {
+            width: 30vw;
+            max-width: 150px;
+            min-width: 100px;
+            fill: #fff;
+            animation: pulse 2s infinite alternate;
+        }
+
+        /* --- Камера и Запись --- */
+        #app { background: #000; }
+
+        #video-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Видео всегда заполняет экран без искажений */
+            filter: grayscale(1) brightness(0.4) contrast(1.1);
+        }
+
+        .ui-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10vh 0; /* Отступы зависят от высоты экрана */
+            background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.5) 100%);
+        }
+
+        /* --- Кнопка записи (Оптимизирована под тач) --- */
+        .record-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            background: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .inner-dot {
+            width: 60px;
+            height: 60px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .record-btn.active .inner-dot {
+            width: 35px;
+            height: 35px;
+            border-radius: 6px;
+        }
+
+        /* --- Финальный экран 24 часа --- */
+        .countdown-wrapper {
+            text-align: center;
+            width: 90%;
+        }
+
+        .status-text {
+            font-size: clamp(10px, 2vw, 14px);
             letter-spacing: 5px;
             color: var(--accent-color);
-            margin-bottom: 20px;
+            margin-bottom: 2vh;
             animation: blink 1.5s infinite;
         }
 
         #big-timer {
-            font-size: 60px;
+            font-size: clamp(32px, 10vw, 70px); /* Шрифт подстраивается под экран */
             font-weight: bold;
-            text-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
-            letter-spacing: 5px;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+            letter-spacing: 2px;
         }
 
-        .hands-small {
-            width: 80px;
-            fill: #fff;
-            opacity: 0.3;
-            margin-top: 40px;
-        }
+        /* Анимации */
+        @keyframes pulse { from { opacity: 0.4; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
-        /* --- Остальные стили (кратко) --- */
-        video { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) brightness(0.5); }
-        .record-btn { width: 70px; height: 70px; border-radius: 50%; border: 2px solid #fff; background: transparent; display: flex; justify-content: center; align-items: center; cursor: pointer; }
-        .inner { width: 50px; height: 50px; background: var(--accent-color); border-radius: 50%; transition: 0.3s; }
-        .record-btn.active .inner { width: 30px; height: 30px; border-radius: 4px; }
-        
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <!-- Сплэш -->
-    <div id="splash">
-        <svg style="width: 120px; fill: #fff; animation: pulse 2s infinite alternate;" viewBox="0 0 200 200">
-            <path d="M100 20 L85 140 L65 175 L80 185 L100 160 L120 185 L135 175 L115 140 Z" />
-        </svg>
-        <h1 style="letter-spacing: 10px; margin-top: 20px;">키리고</h1>
-    </div>
-
-    <!-- Запись -->
-    <div id="app" style="position: relative;">
-        <video id="webcam" autoplay muted playsinline></video>
-        <div style="position: absolute; bottom: 50px; text-align: center;">
-            <button class="record-btn" id="rec-btn"><div class="inner"></div></button>
-            <p style="font-size: 10px; margin-top: 10px; opacity: 0.5;">HOLD TO WISH</p>
+    <!-- 1. Сплэш -->
+    <div id="splash" class="screen">
+        <div class="logo-container">
+            <svg class="hands-svg" viewBox="0 0 200 200">
+                <path d="M100 20 L85 140 L65 175 L80 185 L100 160 L120 185 L135 175 L115 140 Z" />
+            </svg>
+            <h1 style="letter-spacing: 12px; font-size: 24px;">키리고</h1>
         </div>
     </div>
 
-    <!-- Загрузка -->
-    <div id="upload">
-        <p style="letter-spacing: 3px;">UPLOADING TO SYSTEM...</p>
+    <!-- 2. Основное приложение -->
+    <div id="app" class="screen">
+        <div id="video-wrapper">
+            <video id="webcam" autoplay muted playsinline></video>
+            <div class="ui-overlay">
+                <div style="font-size: 12px; letter-spacing: 3px; color: red;">● SYSTEM ACTIVE</div>
+                
+                <div style="text-align: center;">
+                    <button class="record-btn" id="rec-btn">
+                        <div class="inner-dot"></div>
+                    </button>
+                    <p style="font-size: 9px; margin-top: 15px; opacity: 0.6; letter-spacing: 2px;">HOLD TO SEND WISH</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Экран с финальным таймером (24 часа) -->
-    <div id="final-timer">
-        <p class="countdown-title">TIME UNTIL REALIZATION</p>
-        <div id="big-timer">24:00:00</div>
-        <svg class="hands-small" viewBox="0 0 200 200">
-            <path d="M100 20 L85 140 L65 175 L80 185 L100 160 L120 185 L135 175 L115 140 Z" />
-        </svg>
-        <button onclick="localStorage.clear(); location.reload();" style="margin-top: 50px; background: none; border: 1px solid #333; color: #333; font-size: 10px; cursor: pointer;">RESET SESSION</button>
+    <!-- 3. Экран отправки -->
+    <div id="upload" class="screen">
+        <p style="letter-spacing: 5px; font-size: 14px;">PROCESSING...</p>
+    </div>
+
+    <!-- 4. Финальный таймер 24 часа -->
+    <div id="final-timer" class="screen">
+        <div class="countdown-wrapper">
+            <p class="status-text">REMAINING TIME</p>
+            <div id="big-timer">24:00:00</div>
+            <svg style="width: 60px; fill: #fff; opacity: 0.2; margin-top: 5vh;" viewBox="0 0 200 200">
+                <path d="M100 20 L85 140 L65 175 L80 185 L100 160 L120 185 L135 175 L115 140 Z" />
+            </svg>
+        </div>
     </div>
 
     <script>
-        const splash = document.getElementById('splash');
-        const app = document.getElementById('app');
-        const upload = document.getElementById('upload');
-        const finalTimer = document.getElementById('final-timer');
-        const bigTimerText = document.getElementById('big-timer');
+        const screens = {
+            splash: document.getElementById('splash'),
+            app: document.getElementById('app'),
+            upload: document.getElementById('upload'),
+            final: document.getElementById('final-timer')
+        };
+        const timerLabel = document.getElementById('big-timer');
         const video = document.getElementById('webcam');
         const btn = document.getElementById('rec-btn');
 
-        let isRec = false;
+        let isRecording = false;
 
-        // Проверка: есть ли уже запущенный таймер в памяти?
-        function checkExistingWish() {
-            const startTime = localStorage.getItem('kirigo_start');
-            if (startTime) {
-                splash.style.display = 'none';
-                finalTimer.style.display = 'flex';
-                runFinalCountdown(parseInt(startTime));
-                return true;
+        // Инициализация и проверка сохраненного времени
+        function init() {
+            const savedStart = localStorage.getItem('kirigo_timestamp');
+            if (savedStart) {
+                showScreen('final');
+                start24hCountdown(parseInt(savedStart));
+            } else {
+                setupCamera();
             }
-            return false;
         }
 
-        async function init() {
-            if (checkExistingWish()) return;
-
+        async function setupCamera() {
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                video.srcObject = s;
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+                video.srcObject = stream;
                 setTimeout(() => {
-                    splash.style.opacity = '0';
-                    setTimeout(() => { splash.style.display = 'none'; app.style.display = 'flex'; }, 1000);
-                }, 3000);
-            } catch (e) { alert("Access denied"); }
+                    screens.splash.style.opacity = '0';
+                    setTimeout(() => showScreen('app'), 800);
+                }, 2500);
+            } catch (err) {
+                alert("Ошибка: Доступ к камере отклонен.");
+            }
         }
 
-        function runFinalCountdown(startTime) {
+        function showScreen(name) {
+            Object.values(screens).forEach(s => s.style.display = 'none');
+            screens[name].style.display = 'flex';
+        }
+
+        function start24hCountdown(startTime) {
             setInterval(() => {
                 const now = Date.now();
-                const diff = (startTime + (24 * 60 * 60 * 1000)) - now;
+                const deadline = startTime + (24 * 60 * 60 * 1000);
+                const diff = deadline - now;
 
                 if (diff <= 0) {
-                    bigTimerText.innerText = "00:00:00";
-                    bigTimerText.style.color = "red";
+                    timerLabel.innerText = "00:00:00";
+                    timerLabel.style.color = "#ff0000";
                     return;
                 }
 
-                const h = Math.floor(diff / (1000 * 60 * 60));
-                const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((diff % (1000 * 60)) / 1000);
+                const h = Math.floor(diff / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
 
-                bigTimerText.innerText = 
-                    `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                timerLabel.innerText = 
+                    `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
             }, 1000);
         }
 
-        btn.onmousedown = () => {
-            isRec = true;
+        // Логика кнопки
+        const startRec = () => {
+            isRecording = true;
             btn.classList.add('active');
         };
 
-        window.onmouseup = () => {
-            if(!isRec) return;
-            isRec = false;
+        const stopRec = () => {
+            if (!isRecording) return;
+            isRecording = false;
             btn.classList.remove('active');
             
-            // Переход к загрузке
-            app.style.display = 'none';
-            upload.style.display = 'flex';
-
+            showScreen('upload');
+            
             setTimeout(() => {
-                const start = Date.now();
-                localStorage.setItem('kirigo_start', start);
-                upload.style.display = 'none';
-                finalTimer.style.display = 'flex';
-                runFinalCountdown(start);
-            }, 3000);
+                const now = Date.now();
+                localStorage.setItem('kirigo_timestamp', now);
+                showScreen('final');
+                start24hCountdown(now);
+            }, 2500);
         };
 
-        // Тач-события для телефонов
-        btn.ontouchstart = (e) => { e.preventDefault(); btn.onmousedown(); };
-        window.ontouchend = window.onmouseup;
+        // Поддержка ПК и мобильных
+        btn.onmousedown = startRec;
+        window.onmouseup = stopRec;
+        btn.ontouchstart = (e) => { e.preventDefault(); startRec(); };
+        window.ontouchend = stopRec;
 
         init();
     </script>
